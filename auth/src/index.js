@@ -1,3 +1,4 @@
+const { v4: uuid }= require("uuid");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
@@ -12,6 +13,8 @@ const redis = new Redis();
 
 const express = require("express");
 const app = express();
+
+app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Hello, world!");
@@ -37,6 +40,43 @@ app.post("/setup", async (req, res) => {
     res.status(200);
   } else {
     res.status(400);
+  }
+
+  res.end();
+});
+
+app.post("/session", async (req, res) => {
+  const { login, password } = req.body;
+  if (!login || !password || login === "" || password === "") {
+    res.status(400);
+    res.end();
+    return ;
+  }
+
+  // Fetch hashed password from the DB
+  const dbHashedPassword = await redis.hget(`user:${login}`, "password");
+  if (!dbHashedPassword) {
+    res.status(401);
+    res.end();
+    return ;
+  }
+
+  const isValidPassword = await bcrypt.compare(password, dbHashedPassword);
+
+  if (isValidPassword) {
+    const sessionDurationMS = 604800000;
+    const sessionId = uuid();
+
+    await redis.set(`session:${sessionId}`, `user:${login}`); // TODO: Expire redis item
+
+    res.status(200);
+    res.cookie("session", sessionId, {
+      maxAge: sessionDurationMS,
+      secure: true,
+      httpOnly: true,
+    });
+  } else {
+    res.status(401);
   }
 
   res.end();
