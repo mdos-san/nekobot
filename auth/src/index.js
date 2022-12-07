@@ -1,4 +1,4 @@
-const { v4: uuid }= require("uuid");
+const { v4: uuid } = require("uuid");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
@@ -13,8 +13,10 @@ const redis = new Redis();
 
 const express = require("express");
 const app = express();
+const cookieParser = require("cookie-parser");
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.send("Hello, world!");
@@ -50,7 +52,7 @@ app.post("/session", async (req, res) => {
   if (!login || !password || login === "" || password === "") {
     res.status(400);
     res.end();
-    return ;
+    return;
   }
 
   // Fetch hashed password from the DB
@@ -58,7 +60,7 @@ app.post("/session", async (req, res) => {
   if (!dbHashedPassword) {
     res.status(401);
     res.end();
-    return ;
+    return;
   }
 
   const isValidPassword = await bcrypt.compare(password, dbHashedPassword);
@@ -72,7 +74,6 @@ app.post("/session", async (req, res) => {
     res.status(200);
     res.cookie("session", sessionId, {
       maxAge: sessionDurationMS,
-      secure: true,
       httpOnly: true,
     });
   } else {
@@ -80,6 +81,43 @@ app.post("/session", async (req, res) => {
   }
 
   res.end();
+});
+
+async function sessionMiddleware(req, res, next) {
+  const { session } = req.cookies;
+  if (!session) {
+    res.status(401);
+    res.end();
+    return;
+  }
+
+  req.userId = await redis.get(`session:${session}`);
+  req.userRole = await redis.hget(req.userId, "role");
+  next();
+}
+
+app.post("/user", sessionMiddleware, async (req, res) => {
+  if (req.userRole !== "admin") {
+    res.status(403);
+    res.end({ userId });
+    return ;
+  }
+
+  const { login, password } = req.body;
+  const userId = uuid();
+  redis.hset(
+    `user:${userId}`,
+    "login",
+    login,
+    "password",
+    await hash(password),
+    "role",
+    "user"
+  );
+
+  res.status(200);
+  res.json({ userId })
+  res.end()
 });
 
 module.exports = app;
