@@ -8,6 +8,8 @@
   "author": "mdos-san",
   "license": "ISC",
   "devDependencies": {
+    "@types/jasmine": "^4.3.1",
+    "@types/node": "^18.11.13",
     "jasmine": "^4.5.0"
   },
   "dependencies": {
