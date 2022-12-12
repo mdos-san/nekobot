@@ -1,0 +1,16 @@
+{
+  "name": "@nekobot/scrapper",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jasmine --random=false"
+  },
+  "author": "mdos-san",
+  "license": "ISC",
+  "devDependencies": {
+    "jasmine": "^4.5.0"
+  },
+  "dependencies": {
+    "@binance/connector": "^2.0.0-rc.4"
+  }
+}
